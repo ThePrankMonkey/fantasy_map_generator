@@ -123,8 +123,8 @@ def add_borders(noise_map, empires=2, step=0):
     for border_point in border_points:
         cur_point = border_point
         while cur_point != center_point:
-            print("Working from {} to center at {}".format(cur_point, center_point))
-            print(noise_map)
+            # print("Working from {} to center at {}".format(cur_point, center_point))
+            # print(noise_map)
             # mark point
             noise_map[cur_point.y][cur_point.x] = "B"
             # move closer to center
@@ -185,13 +185,13 @@ def main(argv):
             print ('random_map.py -w <int> -h <int> -s <int> -e <int>')
             sys.exit()
         elif opt in ("-w", "--width"):
-            width = arg
+            width = int(arg)
         elif opt in ("-h", "--height"):
-            height = arg
+            height = int(arg)
         elif opt in ("-s", "--seed"):
-            seed = arg
+            seed = int(arg)
         elif opt in ("-e", "--empires"):
-            empires = arg
+            empires = int(arg)
     print("""Generating a map with the following settings:
     Height:  {0}
     Width:   {1}
