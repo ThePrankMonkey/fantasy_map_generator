@@ -6,11 +6,27 @@ Random Map Generator
 
 
 from PIL import Image
-import random
+import getopt
 import numpy
-
+import random
+import sys
 
 JUMP=10000
+
+
+class Point(object):
+    def __init__(self, y, x):
+        self.y = y
+        self.x = x
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.y == other.y and self.x == other.x
+        else:
+            return False
+    def __ne__(self, other):
+        return not self.__eq__(other)
+    def __str__(self):
+        return "({}, {})".format(self.y, self.x)
 
 
 def make_noise(width, height):
@@ -52,8 +68,10 @@ def select_biomes(noise_map):
     for row in noise_map:
         new_row = []
         for elevation in row:
+            if elevation == "B":
+                pixel = (0, 0, 0)
             # water
-            if elevation < 0.3:
+            elif elevation < 0.3:
                 # deep water
                 if elevation < 0.1:
                     pixel = (0, 0, 100)
@@ -74,12 +92,70 @@ def select_biomes(noise_map):
     return new_map
 
 
-def add_borders(noise_map, empires, step):
+def add_borders(noise_map, empires=2, step=0):
+    height = len(noise_map)
+    width = len(noise_map[0])
+    # find border points
+    border_points = []
+    for _empire in range(empires):
+        start_side = random.choice(["N", "S", "E", "W"])
+        print("Finding a point on the {} side".format(start_side))
+        while True:
+            if start_side == "N":
+                start_point = Point(0, random.randint(0, width - 1))
+            if start_side == "S":
+                start_point = Point(height - 1, random.randint(0, width - 1))
+            if start_side == "E":
+                start_point = Point(random.randint(0,height - 1), width - 1)
+            if start_side == "W":
+                start_point = Point(random.randint(0,height - 1), 0)
+            if start_point not in border_points:
+                border_points.append(start_point)
+                print(start_point)
+                # set start point on map
+                # noise_map[start_point[0]][start_point[1]] = "B"
+                break
+    # add border lines
+    center_point_x = int(width * random.randint(350,650)/1000.0)
+    center_point_y = int(height * random.randint(350,650)/1000.0)
+    center_point = Point(center_point_y, center_point_x)
+    noise_map[center_point.y][center_point.x] = "B"
+    for border_point in border_points:
+        cur_point = border_point
+        while cur_point != center_point:
+            print("Working from {} to center at {}".format(cur_point, center_point))
+            print(noise_map)
+            # mark point
+            noise_map[cur_point.y][cur_point.x] = "B"
+            # move closer to center
+            if random.randint(0,1) == 0:
+                # work on y direction
+                if cur_point.y != center_point.y:
+                    if cur_point.y < center_point.y:
+                        cur_point.y += 1
+                    else:
+                        cur_point.y -= 1
+            else:
+                # work on x direction
+                if cur_point.x != center_point.x:
+                    if cur_point.x < center_point.x:
+                        cur_point.x += 1
+                    else:
+                        cur_point.x -= 1
     return noise_map
 
+def test():
+    array = []
+    for _i in range(10):
+        array.append([0]*8)
+    print_map(add_borders(array))
+    #test()
 
-def show_map(noise_map):
-    pixel_map = select_biomes(noise_map)
+def print_map(noise_map):
+    for row in noise_map:
+        print(row)
+
+def show_map(pixel_map):
     map_numpy = numpy.array(pixel_map, dtype=numpy.uint8)
     map_image = Image.fromarray(map_numpy)
     map_image.format = "PNG"
@@ -87,18 +163,47 @@ def show_map(noise_map):
     map_image.show()
 
 
-def main(width, height, seed, empires=2, step=0, temperature=3):
+def main(argv):
+    width = 30
+    height = 20
+    seed = 0
+    empires = 2
+    step = 0
+    _temperature = 0
+    try:
+        opts, args = getopt.getopt(argv,"?w:h:s:e:",["width=","height=", "seed=", "empires="])
+    except getopt.GetoptError:
+        print("random_map.py -w <int> -h <int> -s <int> -e <int>")
+        print("  -w --width=")
+        print("  -h --height=")
+        print("  -s --seed=")
+        print("  -e --empires=")
+        print("  -? --help")
+        sys.exit(2)
+    for opt, arg in opts:
+        if opt in ('-?', "--help"):
+            print ('random_map.py -w <int> -h <int> -s <int> -e <int>')
+            sys.exit()
+        elif opt in ("-w", "--width"):
+            width = arg
+        elif opt in ("-h", "--height"):
+            height = arg
+        elif opt in ("-s", "--seed"):
+            seed = arg
+        elif opt in ("-e", "--empires"):
+            empires = arg
     print("""Generating a map with the following settings:
-    Height: {0}
-    Width:  {1}
-    Seed:   {2}
-    """.format(width, height, seed))
+    Height:  {0}
+    Width:   {1}
+    Seed:    {2}
+    Empires: {3}
+    """.format(width, height, seed, empires))
     random.seed(seed)
     noise_map = make_noise(width, height)
+    noise_map = add_borders(noise_map, empires, step)
+    noise_map = select_biomes(noise_map)
     show_map(noise_map)
-    # biome_map = select_biomes(noise_map)
-    # border_map = add_borders(biome_map, empires, step)
 
 
 if __name__ == "__main__":
-    main(40, 30, random.randint(0,50))
+    main(sys.argv[1:])
