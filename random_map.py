@@ -68,10 +68,8 @@ def select_biomes(noise_map):
     for row in noise_map:
         new_row = []
         for elevation in row:
-            if elevation == "B":
-                pixel = (0, 0, 0)
             # water
-            elif elevation < 0.3:
+            if elevation < 0.3:
                 # deep water
                 if elevation < 0.1:
                     pixel = (0, 0, 100)
@@ -92,9 +90,13 @@ def select_biomes(noise_map):
     return new_map
 
 
-def add_borders(noise_map, empires=2, step=0):
-    height = len(noise_map)
-    width = len(noise_map[0])
+def make_borders(width, height, empires=2, step=0):
+    border_map = []
+    for _i in range(height):
+        row = []
+        for _j in range(width):
+            row.append((255,255,255,0))
+        border_map.append(row)
     # find border points
     border_points = []
     for _empire in range(empires):
@@ -119,14 +121,14 @@ def add_borders(noise_map, empires=2, step=0):
     center_point_x = int(width * random.randint(350,650)/1000.0)
     center_point_y = int(height * random.randint(350,650)/1000.0)
     center_point = Point(center_point_y, center_point_x)
-    noise_map[center_point.y][center_point.x] = "B"
+    border_map[center_point.y][center_point.x] = (0,0,0,255)
     for border_point in border_points:
         cur_point = border_point
         while cur_point != center_point:
             # print("Working from {} to center at {}".format(cur_point, center_point))
-            # print(noise_map)
+            # print(border_map)
             # mark point
-            noise_map[cur_point.y][cur_point.x] = "B"
+            border_map[cur_point.y][cur_point.x] = (0,0,0,255)
             # move closer to center
             if random.randint(0,1) == 0:
                 # work on y direction
@@ -142,23 +144,38 @@ def add_borders(noise_map, empires=2, step=0):
                         cur_point.x += 1
                     else:
                         cur_point.x -= 1
-    return noise_map
+    return border_map
+
 
 def test():
+    height = 10
+    width = 8
     array = []
     for _i in range(10):
         array.append([0]*8)
-    print_map(add_borders(array))
+    border_map = make_borders(width, height, 2, 0)
+    print_map(border_map)
     #test()
+
 
 def print_map(noise_map):
     for row in noise_map:
         print(row)
 
-def show_map(pixel_map):
+
+def make_layer(pixel_map):
     map_numpy = numpy.array(pixel_map, dtype=numpy.uint8)
-    map_image = Image.fromarray(map_numpy)
-    map_image.format = "PNG"
+    map_layer = Image.fromarray(map_numpy)
+    map_layer.format = "PNG"
+    return map_layer
+
+
+def combine_layers(back, fore):
+    back.paste(fore, (0, 0), fore)
+    return back
+
+
+def show_map(map_image):
     map_image.save("tmp.png")
     map_image.show()
 
@@ -200,9 +217,12 @@ def main(argv):
     """.format(width, height, seed, empires))
     random.seed(seed)
     noise_map = make_noise(width, height)
-    noise_map = add_borders(noise_map, empires, step)
     noise_map = select_biomes(noise_map)
-    show_map(noise_map)
+    noise_map = make_layer(noise_map)
+    border_map = make_borders(width, height, empires, step)
+    border_map = make_layer(border_map)
+    final_map = combine_layers(noise_map, border_map)
+    show_map(final_map)
 
 
 if __name__ == "__main__":
